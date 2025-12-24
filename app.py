@@ -2,236 +2,223 @@ from flask import Flask, render_template_string, jsonify
 
 app = Flask(__name__)
 
-# --- SERVER STATE (Memory) ---
-# True = Freeze Mode ON
-# False = Normal Mode
-# Restart hole default 'True' thakbe
+# --- SERVER STATE ---
+# True = Prank is Active (Admin wants to prank)
 server_state = {"frozen": True}
 
 # ==========================================
-# 1. THE PRANK PAGE (For Friend/Victim)
+# 1. THE ULTIMATE PRANK PAGE
 # ==========================================
 prank_html = """
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>System Critical Update</title>
+    <title>System Update 2.0</title>
     <style>
-        /* General Styles */
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select: none; -webkit-user-select: none; }
+        /* Base Styles */
+        body { margin: 0; background: #000; font-family: -apple-system, BlinkMacSystemFont, Roboto, sans-serif; overflow: hidden; user-select: none; -webkit-user-select: none; }
         
-        /* The Trap Button Screen (Safe Mode) */
-        #safe { display: flex; height: 100vh; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; background: #111; transition: opacity 0.2s;}
-        .btn { padding: 15px 40px; background: #00ff00; color: black; border: none; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 20px; box-shadow: 0 0 15px #00ff00; animation: pulse 1s infinite;}
-        
-        /* The SCARY Overlay (Panic Mode) */
-        #overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.98); color: red; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center; z-index: 99999;
-            cursor: none; /* Mouse Gayeb for Laptop */
+        /* SCREEN 1: The Start Button (Gets Audio Permission) */
+        #start-screen {
+            display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh;
+            background: #000; color: white; text-align: center;
         }
+        .install-btn {
+            padding: 15px 40px; background: #2196F3; color: white; border: none; font-size: 18px; 
+            border-radius: 25px; cursor: pointer; margin-top: 20px; font-weight: bold;
+        }
+
+        /* SCREEN 2: The Fake Update (Looks Legit) */
+        #update-screen {
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            height: 100vh; color: white;
+        }
+        .loader {
+            border: 4px solid #333; border-top: 4px solid #fff; border-radius: 50%;
+            width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 30px;
+        }
+        .progress-bar { width: 80%; height: 4px; background: #333; border-radius: 2px; margin-top: 20px; }
+        .progress-fill { width: 0%; height: 100%; background: #4caf50; transition: width 0.5s; }
         
-        .blink { animation: b 0.1s infinite; font-size: 3rem; font-weight: bold; text-shadow: 0 0 20px red; }
-        .virus-text { font-size: 1.2rem; color: white; margin-top: 20px; letter-spacing: 2px; }
+        /* SCREEN 3: The PANIC MODE (Red Flashing) */
+        #panic-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.98); flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; z-index: 99999;
+        }
+        .blink-red { animation: flash 0.1s infinite; }
+        .warning-text { color: red; font-size: 2rem; font-weight: bold; text-shadow: 0 0 10px red; }
         
-        @keyframes b { 0% {opacity:1} 50% {opacity:0.2} 100% {opacity:1} }
-        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes flash { 0% { background: #000; } 50% { background: #500; } 100% { background: #000; } }
     </style>
 </head>
 <body>
 
-    <div id="safe" onclick="startPrank()">
-        <h1 style="color: #00ff00;">Security Check</h1>
-        <p style="color: #ccc; max-width: 80%;">Please verify your device connection.</p>
-        <button class="btn">CLICK TO VERIFY</button>
+    <div id="start-screen" onclick="startUpdate()">
+        <h2 style="font-weight: normal;">System Update 17.4</h2>
+        <p style="color: #888; max-width: 80%;">Critical security patches available.</p>
+        <button class="install-btn">INSTALL NOW</button>
     </div>
 
-    <div id="overlay">
-        <div class="blink">⚠️ HACKED ⚠️</div>
-        <div class="virus-text">SYSTEM FAILURE</div>
-        <p style="color: red; font-size: 14px; margin-top: 30px;">DELETING ALL PHOTOS...</p>
-        <p id="counter" style="color: white; font-size: 20px;">0%</p>
-        <p style="color: grey; font-size: 10px; margin-top: 50px;">Device ID: LOCKED</p>
+    <div id="update-screen" onclick="triggerPanic()">
+        <div class="loader"></div>
+        <h2 style="font-weight: normal;">Installing...</h2>
+        <p style="color: #888; font-size: 12px;">Do not turn off device.</p>
+        <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+        <p id="percent" style="margin-top: 10px; color: #888;">0%</p>
+    </div>
+
+    <div id="panic-screen" onclick="triggerPanic()">
+        <div class="warning-text">⚠️ ERROR ⚠️</div>
+        <p style="color: white; margin-top: 20px;">TOUCH DETECTED!</p>
+        <p style="color: red; font-size: 12px;">SYSTEM CORRUPTED</p>
     </div>
 
     <script>
         let audioCtx;
         let oscillator;
-        let isPlaying = false;
-        let hasInteracted = false;
+        let progress = 0;
+        let isPrankRunning = false;
+        let inPanicMode = false;
 
-        // --- 1. PREVENT SCROLL & SWIPE GESTURES ---
-        // Eta 'Pull to Refresh' ar 'Scroll' bondho korbe
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
+        // --- PREVENT SCROLL & EXIT ---
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+        window.onbeforeunload = function() { return "Update in progress!"; };
 
-        // --- 2. EXIT TRAP (Show Popup on Close) ---
-        // Keu tab close ba swipe up korle browser warning debe
-        window.onbeforeunload = function() {
-            return "System Error: Cannot Close!";
-        };
-
-        // --- 3. ACTIVATION ---
-        function startPrank() {
-            if(hasInteracted) return;
-            hasInteracted = true;
-
-            // Go Fullscreen
-            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+        // --- START FUNCTION ---
+        function startUpdate() {
+            // 1. UI Switch
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('update-screen').style.display = 'flex';
             
-            // Trap Back Button (History Loop)
+            // 2. Fullscreen & Back Trap
+            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
             history.pushState(null, null, location.href);
             window.onpopstate = function () {
                 history.pushState(null, null, location.href);
+                triggerPanic(); // Back button triggers panic too!
             };
 
-            // Initialize Audio Context
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+            // 3. Init Audio (Silent first)
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             
-            document.getElementById('safe').innerHTML = "<h1 style='color:white'>Verifying...</h1>";
+            isPrankRunning = true;
         }
 
-        // --- 4. SOUND GENERATOR (Siren) ---
-        function playAlarm() {
-            if (isPlaying || !audioCtx) return;
-            oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+        // --- THE PANIC TRIGGER (If touched) ---
+        function triggerPanic() {
+            if (!isPrankRunning) return;
             
-            oscillator.type = 'sawtooth'; 
-            oscillator.frequency.value = 800; 
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator.start();
-            isPlaying = true;
+            inPanicMode = true;
+            document.getElementById('update-screen').style.display = 'none';
+            document.getElementById('panic-screen').style.display = 'flex';
+            document.getElementById('panic-screen').classList.add('blink-red');
 
-            // Modulate pitch (Siren Effect)
+            // Vibrate
+            if(navigator.vibrate) navigator.vibrate([200, 50, 200, 50, 500]);
+            
+            // Play Siren
+            playSiren();
+            
+            // Reset to "Normal Update" after 3 seconds (To confuse them)
+            setTimeout(() => {
+                inPanicMode = false;
+                document.getElementById('panic-screen').style.display = 'none';
+                document.getElementById('panic-screen').classList.remove('blink-red');
+                document.getElementById('update-screen').style.display = 'flex';
+                stopSiren();
+            }, 3000);
+        }
+
+        // --- SOUND LOGIC ---
+        function playSiren() {
+            if (!audioCtx) return;
+            oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.value = 800;
+            oscillator.start();
+            
+            // Wee-Woo Effect
             window.sirenInterval = setInterval(() => {
                 if(oscillator.frequency.value == 800) oscillator.frequency.value = 500;
                 else oscillator.frequency.value = 800;
-            }, 300);
+            }, 200);
         }
 
-        function stopAlarm() {
+        function stopSiren() {
             if (oscillator) {
                 oscillator.stop();
                 clearInterval(window.sirenInterval);
                 oscillator = null;
-                isPlaying = false;
             }
         }
 
-        // --- 5. SERVER POLLING (The Brain) ---
+        // --- SERVER CONTROL LOOP ---
         setInterval(() => {
             fetch('/status')
                 .then(res => res.json())
                 .then(data => {
-                    const overlay = document.getElementById('overlay');
-                    const safeScreen = document.getElementById('safe');
-                    
-                    if (data.frozen && hasInteracted) {
-                        // SHOW PRANK
-                        safeScreen.style.display = 'none';
-                        overlay.style.display = 'flex';
-                        
-                        // Laptop: Hide Cursor
-                        document.body.style.cursor = 'none';
-
-                        // Mobile: Vibrate (Strong)
-                        if(navigator.vibrate) navigator.vibrate([400, 100, 400, 100]); 
-                        
-                        // Sound: Play
-                        if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-                        playAlarm();
-
-                        // Fake Progress Counter
-                        document.getElementById('counter').innerText = Math.floor(Math.random() * 99) + "%";
-                        
-                    } else {
-                        // HIDE PRANK / RESET
-                        if(hasInteracted) {
-                            overlay.style.display = 'none';
-                            safeScreen.style.display = 'flex';
-                            safeScreen.innerHTML = "<h1 style='color:#00ff00'>VERIFIED ✅</h1><p>System Safe.</p>";
+                    // Update Progress Bar if not in panic
+                    if (isPrankRunning && !inPanicMode) {
+                        if (data.frozen) {
+                            if(progress < 95) progress += 0.5;
+                        } else {
+                            // Admin released it
+                            document.body.innerHTML = "<h1 style='color:green;text-align:center;margin-top:50%'>Update Success ✅</h1>";
                             document.body.style.cursor = 'default';
-                            stopAlarm();
                         }
+                        document.getElementById('fill').style.width = progress + "%";
+                        document.getElementById('percent').innerText = Math.floor(progress) + "%";
                     }
                 });
-        }, 1000); // Checks every 1 second
+        }, 1000);
     </script>
 </body>
 </html>
 """
 
 # ==========================================
-# 2. THE ADMIN PAGE (For You)
+# 2. ADMIN PANEL
 # ==========================================
 admin_html = """
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminator Control</title>
     <style>
         body { background: #111; color: #0f0; font-family: monospace; text-align: center; padding-top: 50px; }
-        button { 
-            padding: 20px 40px; font-size: 20px; border: 2px solid #0f0; 
-            background: #000; color: #0f0; cursor: pointer; border-radius: 10px; 
-            text-transform: uppercase; letter-spacing: 2px;
-            transition: 0.2s;
-        }
-        button:active { background: #0f0; color: #000; transform: scale(0.95); }
-        .status { margin-bottom: 30px; font-size: 24px; border: 1px solid #333; padding: 10px; display: inline-block; }
+        button { padding: 20px; font-size: 20px; border: 2px solid #0f0; background: #000; color: #0f0; border-radius: 10px; cursor: pointer;}
     </style>
 </head>
 <body>
-    <h1>TERMINATOR CONTROL 💀</h1>
-    
-    <div class="status">
-        Current State: <span id="st">{{ state }}</span>
-    </div>
-    <br>
-    
-    <button onclick="toggle()">🔴 TOGGLE ATTACK</button>
-
+    <h1>CONTROL CENTER</h1>
+    <h2 id="st">{{ state }}</h2>
+    <button onclick="toggle()">TOGGLE PRANK</button>
     <script>
         function toggle() {
             fetch('/toggle', { method: 'POST' })
                 .then(res => res.json())
-                .then(data => {
-                    const st = document.getElementById('st');
-                    if(data.frozen) {
-                        st.innerText = "ATTACKING... 🔥";
-                        st.style.color = "red";
-                    } else {
-                        st.innerText = "SAFE ✅";
-                        st.style.color = "#0f0";
-                    }
-                });
+                .then(data => document.getElementById('st').innerText = data.frozen ? "PRANK ACTIVE 😈" : "RELEASED ✅");
         }
     </script>
 </body>
 </html>
 """
 
-# ==========================================
-# 3. FLASK ROUTES
-# ==========================================
 @app.route('/')
 def index():
     return render_template_string(prank_html)
 
 @app.route('/admin')
 def admin():
-    status_text = "ATTACKING... 🔥" if server_state["frozen"] else "SAFE ✅"
-    return render_template_string(admin_html, state=status_text)
+    return render_template_string(admin_html, state="PRANK ACTIVE 😈" if server_state["frozen"] else "RELEASED ✅")
 
 @app.route('/status')
 def status():
@@ -243,5 +230,4 @@ def toggle():
     return jsonify(server_state)
 
 if __name__ == '__main__':
-    # Running on 0.0.0.0
     app.run(host='0.0.0.0', port=5000)
